@@ -2,29 +2,43 @@ package main
 
 import (
 	"database/sql"
-
 	_ "github.com/mattn/go-sqlite3"
+
 )
 
-var db, _ = sql.Open("sqlite3", "user.sqlite3")
+type User struct {
+	Uuid     string
+	Username string
+	Password string
+	Fname    string
+	Lname    string
+	Email    string
+}
 
 func saveData(u *User) error {
-	db.Exec("create table if not exists users (uuid text not null, firstname text, lastname test, username text, email text, password text, PRIMARY KEY(uuid))")
+	var db, _ = sql.Open("sqlite3", "users.sqlite3")
+	defer db.Close()
+	db.Exec("create table if not exists users (firstname text, lastname text, username text, email text, password text)")
 	tx, _ := db.Begin()
-	stmt, _ := tx.Prepare("insert into users (uuid, firstname, lastname, username, email, password) values (?, ?, ?, ?, ?, ?)")
-	_, err := stmt.Exec(u.Uuid, u.FName, u.LName, u.UserName, u.Email, u.Password)
+	stmt, _ := tx.Prepare("insert into users (firstname, lastname, username, email, password) values (?, ?, ?, ?, ?)")
+	_, err := stmt.Exec(u.Fname, u.Lname, u.Username, u.Email, u.Password)
 	tx.Commit()
 	return err
 }
 
-func loadUser(uname, pw string) (*User, error) {
-	u := &User{}
-	q, err := db.Query("select username, password from users where username = '" + uname + "' Desc limit 1")
+func userExists(u *User) bool {
+	var db, _ = sql.Open("sqlite3", "users.sqlite3")
+	defer db.Close()
+	var ps, us string
+	q, err := db.Query("select username, password from users where username = '" + u.Username + "' and password = '" + u.Password + "'")
 	if err != nil {
-		return nil, err
+		return false
 	}
-	for q.Next() {
-		q.Scan(&u.UserName, &u.Password)
+	for q.Next(){
+		q.Scan(&us, &ps)
 	}
-	return u, nil
+	if us == u.Username && ps == u.Password {
+		return true
+	}
+	return false
 }
